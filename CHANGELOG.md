@@ -21,15 +21,17 @@ Erster spielbarer Vertical Slice (Meilensteine M1–M8), etwa 60–90 Minuten Sp
 - Menüs, HUD, Tagebuch, Karte, Untertitel; Lokalisierung Deutsch/Englisch.
 - Frei belegbare Steuerung für Tastatur/Maus und Controller, Voreinstellungen für Barrierefreiheit.
 - Atomares Speichersystem mit Prüfsumme und Sicherungskopie (`%APPDATA%\VESPER\saves\`).
-- Windows-Desktop-Build (Electron, x64) als ZIP mit `VESPER.exe`.
+- Desktop-Builds (Electron): Windows x64 als Installer, portable `.exe` und ZIP;
+  macOS (Universal, Apple Silicon und Intel) als DMG und ZIP.
 - 39 Unit- und Integrationstests (Vitest), 6 Browser-Tests (Playwright), Desktop-Smoke-Test.
 - Dokumentation: Anforderungs-Nachweis, Lizenzinventar, Fehlerregister, Playtest-Vorlage, Machbarkeit.
 
 ### Bekannte Einschränkungen
 - 60 FPS auf Referenz-Hardware, saubere Windows-Installation und zwei Blind-Playtests sind
   noch nicht von Menschen bestätigt (siehe `docs/FEHLERREGISTER.md` und `docs/PLAYTEST.md`).
-- Installer, portable `.exe` und ZIP dieses Releases baut der Release-Workflow auf einem
-  Windows-Runner; der Installer ist noch nicht auf einem echten Windows-Rechner getestet.
+- Die Installer baut der Release-Workflow auf Windows- und macOS-Runnern; sie sind noch nicht
+  auf echten Rechnern getestet und nicht mit einem Entwicklerzertifikat signiert
+  (Warnungen von SmartScreen bzw. Gatekeeper, siehe Release-Notizen).
 
 [Unreleased]: https://github.com/gigafrosxh/vesper/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/gigafrosxh/vesper/releases/tag/v0.1.0

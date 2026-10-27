@@ -56,10 +56,11 @@ npm run desktop      # Build und Start als Desktop-App (Electron)
 URL-Parameter für Tests: `?play` startet sofort ein neues Spiel mit Spielständen nur im Speicher,
 `?memory` nutzt den normalen Ablauf, schreibt aber nichts dauerhaft.
 
-## Windows-Paket (Charter: Windows 10/11, 64 Bit)
+## Desktop-Pakete (Windows 10/11 64 Bit, macOS)
 
 ```bash
-npm run dist:win     # auf Windows: NSIS-Installer und portable .exe in release/
+npm run dist:win     # auf Windows: NSIS-Installer, portable .exe und ZIP in release/
+npm run dist:mac     # auf macOS: DMG und ZIP (Universal: Apple Silicon und Intel)
 ```
 
 Der NSIS-Installer braucht Windows (oder Wine). Ohne Windows entsteht ein ZIP mit `VESPER.exe`:
@@ -68,7 +69,7 @@ Der NSIS-Installer braucht Windows (oder Wine). Ohne Windows entsteht ein ZIP mi
 npx vite build && npx electron-builder --win zip --x64 -c.win.target=zip
 ```
 
-Spielstände liegen unter `%APPDATA%\VESPER\saves\`. Jeder Schreibvorgang geht in eine temporäre
+Spielstände liegen unter `%APPDATA%\VESPER\saves\` (macOS: `~/Library/Application Support/VESPER/saves/`). Jeder Schreibvorgang geht in eine temporäre
 Datei, wird mit fsync gesichert und dann atomar umbenannt; die vorige Version bleibt als `.bak`.
 Das Spiel läuft komplett offline, ohne Konto und ohne Telemetrie (FR-001, NFR-06).
 

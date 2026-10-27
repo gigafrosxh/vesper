@@ -1,5 +1,5 @@
 'use strict';
-// Electron main process for the Windows desktop build (Charter: Windows 10/11, 64-bit).
+// Electron main process for the desktop builds (Windows x64, macOS universal).
 const { app, BrowserWindow, ipcMain, Menu, shell } = require('electron');
 const path = require('node:path');
 const { createFileStorage } = require('./storage.cjs');
@@ -49,7 +49,8 @@ function handleSync(channel, fn) {
 }
 
 app.whenReady().then(() => {
-  Menu.setApplicationMenu(null);
+  // macOS needs the app menu for Cmd+Q and Cmd+H; elsewhere the game has no menu bar.
+  Menu.setApplicationMenu(process.platform === 'darwin' ? Menu.buildFromTemplate([{ role: 'appMenu' }]) : null);
   storage = createFileStorage(path.join(app.getPath('userData'), 'saves'));
   handleSync('storage:read', (key) => storage.read(key));
   handleSync('storage:write', (key, value) => storage.write(key, value));

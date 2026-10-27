@@ -12,8 +12,9 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "desktop": "vite build && electron .",
-    "dist:win": "tsc --noEmit && vite build && electron-builder --win nsis portable --x64",
-    "test:all": "tsc --noEmit && vitest run && playwright test"
+    "dist:win": "tsc --noEmit && vite build && electron-builder --win",
+    "test:all": "tsc --noEmit && vitest run && playwright test",
+    "dist:mac": "tsc --noEmit && vite build && electron-builder --mac"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",
@@ -53,9 +54,16 @@
           "arch": [
             "x64"
           ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
         }
       ],
-      "icon": "build/icon.png"
+      "icon": "build/icon.png",
+      "artifactName": "VESPER-${version}-win-x64.${ext}"
     },
     "nsis": {
       "oneClick": false,
@@ -71,6 +79,29 @@
     },
     "portable": {
       "artifactName": "VESPER-${version}-portable.${ext}"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
+      "icon": "build/icon-1024.png",
+      "category": "public.app-category.adventure-games",
+      "identity": "-",
+      "artifactName": "VESPER-${version}-mac-universal.${ext}"
+    },
+    "dmg": {
+      "title": "VESPER ${version}"
     }
   }
 }

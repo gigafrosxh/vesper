@@ -1,9 +1,10 @@
 name: Release
 
 # Steht in package.json eine Version, zu der es noch kein Release gibt, baut dieser
-# Workflow das Spiel für Windows, legt den Tag vX.Y.Z an und veröffentlicht ein
-# GitHub Release mit den Notizen aus CHANGELOG.md. Auslöser: Push auf main, ein
-# von Hand gepushter Tag vX.Y.Z oder ein manueller Start.
+# Workflow das Spiel für Windows und macOS, legt den Tag vX.Y.Z an und veröffentlicht
+# ein GitHub Release mit den Notizen aus CHANGELOG.md. Auslöser: Push auf main, ein
+# von Hand gepushter Tag vX.Y.Z oder ein manueller Start (baut auch ein bestehendes
+# Release neu und ersetzt dessen Dateien).
 on:
   push:
     branches: [main]
@@ -35,30 +36,75 @@ jobs:
             echo "::error::Tag $GITHUB_REF_NAME passt nicht zu package.json ($version)"
             exit 1
           fi
-          if gh release view "v$version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          elif gh release view "v$version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "Release v$version gibt es schon, nichts zu tun."
             echo "publish=false" >> "$GITHUB_OUTPUT"
           else
             echo "publish=true" >> "$GITHUB_OUTPUT"
           fi
+          awk -v v="$version" '
+            $0 ~ "^## \\[" v "\\]" { found=1; next }
+            found && /^## \[/ { exit }
+            found && /^\[.*\]: / { exit }
+            found { print }
+          ' CHANGELOG.md > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "::error::Kein Abschnitt [$version] in CHANGELOG.md"
+            exit 1
+          fi
 
-  release:
+  build:
     needs: check
     if: needs.check.outputs.publish == 'true'
-    runs-on: windows-latest
-    env:
-      VERSION: ${{ needs.check.outputs.version }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - os: windows-latest
+            target: --win --x64
+          - os: macos-latest
+            target: --mac --universal
+    runs-on: ${{ matrix.os }}
     defaults:
       run:
         shell: bash
+    env:
+      # Ungesignierte Builds: keine Zertifikate suchen.
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npx vite build
+      - run: npx electron-builder ${{ matrix.target }} --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.os }}
+          if-no-files-found: error
+          path: |
+            release/VESPER-*.exe
+            release/VESPER-*.zip
+            release/VESPER-*.dmg
 
-      - name: Release-Notizen aus CHANGELOG.md
+  publish:
+    needs: [check, build]
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: release
+          merge-multiple: true
+      - name: Release-Notizen und Quellcode
         run: |
           awk -v v="$VERSION" '
             $0 ~ "^## \\[" v "\\]" { found=1; next }
@@ -66,24 +112,9 @@ jobs:
             found && /^\[.*\]: / { exit }
             found { print }
           ' CHANGELOG.md > release-notes.md
-          if [ ! -s release-notes.md ]; then
-            echo "::error::Kein Abschnitt [$VERSION] in CHANGELOG.md"
-            exit 1
-          fi
-
-      - run: npm ci
-      - run: npm run typecheck
-      - run: npm test
-
-      - name: Windows-Build (Installer, portable .exe, ZIP)
-        run: |
-          npx vite build
-          npx electron-builder --win nsis portable zip --x64 --publish never \
-            -c.win.artifactName='VESPER-${version}-win-x64.${ext}'
-
-      - name: Quellcode-ZIP
-        run: git archive --format=zip --prefix="vesper-$VERSION/" -o "release/VESPER-$VERSION-source.zip" HEAD
-
+          cat .github/release-install.md >> release-notes.md
+          git archive --format=zip --prefix="vesper-$VERSION/" -o "release/VESPER-$VERSION-source.zip" HEAD
+          ls -la release
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ env.VERSION }}
@@ -91,8 +122,4 @@ jobs:
           name: VESPER ${{ env.VERSION }}
           body_path: release-notes.md
           prerelease: ${{ contains(env.VERSION, '-') }}
-          files: |
-            release/VESPER-Setup-*.exe
-            release/VESPER-*-portable.exe
-            release/VESPER-*-win-x64.zip
-            release/VESPER-*-source.zip
+          files: release/*
