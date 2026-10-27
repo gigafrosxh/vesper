@@ -30,10 +30,11 @@ Ablauf für eine neue Version:
 
 1. Änderungen unter `## [Unreleased]` in `CHANGELOG.md` eintragen, dann in `## [X.Y.Z] - Datum` umbenennen.
 2. `npm version X.Y.Z --no-git-tag-version` setzt die Nummer in `package.json`.
-3. Commit auf `main`, dann `git tag vX.Y.Z && git push origin main vX.Y.Z`.
-4. Der Workflow `.github/workflows/release.yml` prüft, dass Tag und `package.json` übereinstimmen,
-   führt die Tests aus, baut auf Windows Installer, portable `.exe` und ZIP und legt das
-   GitHub Release mit den Notizen aus dem Changelog an.
+3. Commit und Push auf `main`. Mehr ist nicht nötig.
+4. Der Workflow `.github/workflows/release.yml` merkt, dass es zur Version in `package.json` noch
+   kein Release gibt, führt die Tests aus, baut auf Windows Installer, portable `.exe` und ZIP,
+   legt den Tag `vX.Y.Z` an und veröffentlicht das GitHub Release mit den Notizen aus dem Changelog.
+   Ein von Hand gepushter Tag `vX.Y.Z` oder ein manueller Start unter „Actions“ geht ebenso.
 
 **Unity-Port:** Der Port nach Unity 6 setzt dieselbe Versionsreihe fort (eigene Tags `vX.Y.Z`,
 gleicher Changelog). Der erste Unity-Build bekommt eine neue MINOR-Version und wird im Changelog

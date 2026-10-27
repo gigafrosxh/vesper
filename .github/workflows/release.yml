@@ -1,17 +1,53 @@
 name: Release
 
-# Ein Tag der Form vX.Y.Z (oder vX.Y.Z-beta.1 usw.) baut das Spiel für Windows
-# und veröffentlicht ein GitHub Release mit den Notizen aus CHANGELOG.md.
+# Steht in package.json eine Version, zu der es noch kein Release gibt, baut dieser
+# Workflow das Spiel für Windows, legt den Tag vX.Y.Z an und veröffentlicht ein
+# GitHub Release mit den Notizen aus CHANGELOG.md. Auslöser: Push auf main, ein
+# von Hand gepushter Tag vX.Y.Z oder ein manueller Start.
 on:
   push:
+    branches: [main]
     tags: ["v*.*.*"]
+  workflow_dispatch:
 
 permissions:
   contents: write
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      publish: ${{ steps.v.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [ "$GITHUB_REF_TYPE" = "tag" ] && [ "${GITHUB_REF_NAME#v}" != "$version" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME passt nicht zu package.json ($version)"
+            exit 1
+          fi
+          if gh release view "v$version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release v$version gibt es schon, nichts zu tun."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
   release:
+    needs: check
+    if: needs.check.outputs.publish == 'true'
     runs-on: windows-latest
+    env:
+      VERSION: ${{ needs.check.outputs.version }}
     defaults:
       run:
         shell: bash
@@ -21,16 +57,6 @@ jobs:
         with:
           node-version: 22
           cache: npm
-
-      - name: Version prüfen (Tag = package.json)
-        run: |
-          tag="${GITHUB_REF_NAME#v}"
-          pkg="$(node -p "require('./package.json').version")"
-          if [ "$tag" != "$pkg" ]; then
-            echo "::error::Tag v$tag passt nicht zu package.json ($pkg)"
-            exit 1
-          fi
-          echo "VERSION=$pkg" >> "$GITHUB_ENV"
 
       - name: Release-Notizen aus CHANGELOG.md
         run: |
@@ -60,9 +86,11 @@ jobs:
 
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ env.VERSION }}
+          target_commitish: ${{ github.sha }}
           name: VESPER ${{ env.VERSION }}
           body_path: release-notes.md
-          prerelease: ${{ contains(github.ref_name, '-') }}
+          prerelease: ${{ contains(env.VERSION, '-') }}
           files: |
             release/VESPER-Setup-*.exe
             release/VESPER-*-portable.exe
