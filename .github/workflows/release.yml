@@ -1,0 +1,70 @@
+name: Release
+
+# Ein Tag der Form vX.Y.Z (oder vX.Y.Z-beta.1 usw.) baut das Spiel für Windows
+# und veröffentlicht ein GitHub Release mit den Notizen aus CHANGELOG.md.
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Version prüfen (Tag = package.json)
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg="$(node -p "require('./package.json').version")"
+          if [ "$tag" != "$pkg" ]; then
+            echo "::error::Tag v$tag passt nicht zu package.json ($pkg)"
+            exit 1
+          fi
+          echo "VERSION=$pkg" >> "$GITHUB_ENV"
+
+      - name: Release-Notizen aus CHANGELOG.md
+        run: |
+          awk -v v="$VERSION" '
+            $0 ~ "^## \\[" v "\\]" { found=1; next }
+            found && /^## \[/ { exit }
+            found && /^\[.*\]: / { exit }
+            found { print }
+          ' CHANGELOG.md > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "::error::Kein Abschnitt [$VERSION] in CHANGELOG.md"
+            exit 1
+          fi
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+      - name: Windows-Build (Installer, portable .exe, ZIP)
+        run: |
+          npx vite build
+          npx electron-builder --win nsis portable zip --x64 --publish never \
+            -c.win.artifactName='VESPER-${version}-win-x64.${ext}'
+
+      - name: Quellcode-ZIP
+        run: git archive --format=zip --prefix="vesper-$VERSION/" -o "release/VESPER-$VERSION-source.zip" HEAD
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: VESPER ${{ env.VERSION }}
+          body_path: release-notes.md
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          files: |
+            release/VESPER-Setup-*.exe
+            release/VESPER-*-portable.exe
+            release/VESPER-*-win-x64.zip
+            release/VESPER-*-source.zip

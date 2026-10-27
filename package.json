@@ -1,0 +1,76 @@
+{
+  "name": "vesper",
+  "version": "0.1.0",
+  "private": true,
+  "description": "VESPER: The Shattered Firmament - vertical slice",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "desktop": "vite build && electron .",
+    "dist:win": "tsc --noEmit && vite build && electron-builder --win nsis portable --x64",
+    "test:all": "tsc --noEmit && vitest run && playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@types/three": "^0.186.0",
+    "electron": "^45.0.0",
+    "electron-builder": "^26.18.0",
+    "three": "^0.186.1",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
+  },
+  "main": "electron/main.cjs",
+  "author": "VESPER project",
+  "build": {
+    "appId": "dev.vesper.slice",
+    "productName": "VESPER",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "VESPER-Setup-${version}.${ext}"
+    },
+    "linux": {
+      "target": [
+        "dir"
+      ]
+    },
+    "portable": {
+      "artifactName": "VESPER-${version}-portable.${ext}"
+    }
+  }
+}
